@@ -30,6 +30,10 @@
 #define MIN_CODE       0    //min code version
 #define MAX_CODE       1    //max code version
 
+/**
+   Internal variables used to track the current position
+   and the last direction of travel
+*/
 #define INTERNAL_VAR_POSLSB   1
 #define INTERNAL_VAR_POSMSB   2
 #define INTERNAL_VAR_DIRECT   3
@@ -46,22 +50,20 @@ DCCStepper *step1 = NULL;
 
 void myUserFunc(Message * msg, MergCBUS * mcbus) {
   /* getting standard on/off events */
-
   boolean onEvent;
 
   if (mcbus->eventMatch()) {
-    Serial.println("Match");
     onEvent = mcbus->isAccOn();
 
     if (onEvent)
     {
-      Serial.println("On");
+      // An On event, we move anti-clockwise
       step1->setSpeed(100, false);
       cbus.setInternalNodeVariable(INTERNAL_VAR_DIRECT, DIRECTION_ANTI);
     }
     else
     {
-      Serial.println("Off");
+      // An Off event, we move clockwise
       step1->setSpeed(100, true);
       cbus.setInternalNodeVariable(INTERNAL_VAR_DIRECT, DIRECTION_CLOCK);
     }
@@ -110,8 +112,11 @@ void setup() {
     cbus.setUpNewMemory();
     cbus.saveNodeFlags();
     cbus.setNodeVariable(1, 0);
-    cbus.setNodeVariable(2, 100);
-    cbus.setNodeVariable(3, 20);
+    cbus.setNodeVariable(2, 200);
+    cbus.setNodeVariable(3, 50);
+    cbus.setInternalNodeVariable(INTERNAL_VAR_POSLSB, 0);
+    cbus.setInternalNodeVariable(INTERNAL_VAR_POSMSB, 0);
+    cbus.setInternalNodeVariable(INTERNAL_VAR_DIRECT, 0);
   }
 
   cbus.setLeds(GREEN_LED, YELLOW_LED); //set the led ports
@@ -136,7 +141,7 @@ void setup() {
   step1 = new DCCStepper(STEPPER_BIPOLAR | STEPPER_MODE_CONSTRAINED, maxsteps, 64, rpm, 4, 3, 5, 7);
 
   int position = cbus.getInternalNodeVar(INTERNAL_VAR_POSLSB) | (cbus.getInternalNodeVar(INTERNAL_VAR_POSMSB) << 8);
-    
+
   step1->setCurrentPosition(position);
   step1->setActive(true);
   if (cbus.getInternalNodeVar(INTERNAL_VAR_DIRECT) == DIRECTION_CLOCK)
